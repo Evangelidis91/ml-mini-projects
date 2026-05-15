@@ -8,7 +8,6 @@ Dataset: Telco Customer Churn (IBM)
 Models: Logistic Regression, Random Forest, Gradient Boosting, GB (Weighted)
 """
 
-import os
 import warnings
 
 import matplotlib.pyplot as plt
@@ -21,10 +20,10 @@ from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.utils.class_weight import compute_sample_weight
-from contextlib import contextmanager
+
+from helper_methods import section, save_plot
 
 warnings.filterwarnings("ignore")
-os.makedirs("plots", exist_ok=True)
 
 TUNING_CONFIG = {
     "Gradient Boosting": (
@@ -344,20 +343,6 @@ def evaluate(model, X_test, y_test, label=""):
         "y_prob": y_prob,
     }
 
-def section(title):
-    print("\n" + "=" * 60)
-    print(title)
-    print("=" * 60)
-
-@contextmanager
-def save_plot(file_name):
-    try:
-        yield
-        plt.tight_layout()
-        plt.savefig(f"plots/{file_name}", dpi=150, bbox_inches="tight")
-        print("Saved: plots/" + file_name)
-    finally:
-        plt.close()
 
 def draw_confusion_matrix(y_true, y_pred, title, ax=None):
     """Draw confusion matrix."""
