@@ -18,7 +18,7 @@ This project builds and compares multiple regression models to predict median ho
 
 ### Features
 | Feature | Description | Correlation with target |
-|---------|-------------|----------------------|
+|---------|-------------|-------------------------|
 | MedInc | Median income in block | +0.688 |
 | AveRooms | Average rooms per household | +0.152 |
 | HouseAge | Median house age | +0.106 |
@@ -34,9 +34,9 @@ This project builds and compares multiple regression models to predict median ho
 2. **Correlation Analysis** — Linear relationships with target
 3. **Geographic Mapping** — Price and population density across California
 4. **Feature Relationships** — Scatter plots of each feature vs house value
-5. **Model Training** — Compare 5 regression models with cross-validation
+5. **Model Training** — Compare 5 regression models with 5-fold cross-validation
 6. **Hyperparameter Tuning** — GridSearchCV on best model
-7. **Residual Analysis** — Verify assumptions and identify error patterns
+7. **Residual Analysis** — Q-Q plot, distribution, and residuals vs predicted
 8. **Prediction Error Analysis** — Performance across price ranges
 
 ## Results
@@ -50,9 +50,11 @@ This project builds and compares multiple regression models to predict median ho
 | Gradient Boosting | 0.542 | 0.372 | 0.776 | 0.787 |
 | **Random Forest** | **0.506** | **0.328** | **0.805** | **0.805** |
 
+> Tree-based models clearly outperform linear models (R² 0.80 vs 0.58), confirming the data has strong non-linear and geographic patterns that linear regression can't capture.
+
 ### Hyperparameter Tuning (Random Forest)
 | Metric | Before tuning | After tuning |
-|--------|--------------|--------------|
+|--------|---------------|--------------|
 | R² | 0.8050 | 0.8066 |
 | RMSE | 0.5055 | 0.5035 |
 | MAE | 0.3276 | 0.3265 |
@@ -62,10 +64,12 @@ This project builds and compares multiple regression models to predict median ho
 ### Prediction Error by Price Range
 | Range | MAE | Samples |
 |-------|-----|---------|
-| Budget (< $150k) | 0.233 ($23,300) | 1,500 |
-| Mid ($150k - $300k) | 0.292 ($29,200) | 1,870 |
-| High ($300k - $400k) | 0.498 ($49,800) | 415 |
-| Premium (≥ $400k) | 0.729 ($72,900) | 343 |
+| Budget (< $150k) | 0.233 (~$23k) | 1,500 |
+| Mid ($150k - $300k) | 0.292 (~$29k) | 1,870 |
+| High ($300k - $400k) | 0.498 (~$50k) | 415 |
+| Premium (≥ $400k) | 0.729 (~$73k) | 343 |
+
+> The model is ~3× less accurate on premium homes. The dataset's target is capped at $500k, so many true premium values are clipped — the model can't predict above the ceiling it was trained on.
 
 ### Residual Analysis
 | Statistic | Value |
@@ -87,6 +91,8 @@ This project builds and compares multiple regression models to predict median ho
 | Population | 0.031 |
 | AveBedrms | 0.030 |
 
+> Median income alone explains over half of the model's predictions. Latitude + Longitude together (~17.8%) capture the well-known coastal vs inland and Bay Area vs LA price patterns.
+
 ## Visualizations
 
 | Plot | Description |
@@ -96,8 +102,8 @@ This project builds and compares multiple regression models to predict median ho
 | `03_geographic_maps.png` | California price map + population density map |
 | `04_feature_relationships.png` | Scatter plots of each feature vs house value |
 | `05_model_comparison.png` | RMSE, MAE, R² comparison across all models |
-| `06_actual_vs_predicted.png` | Actual vs predicted scatter for Random Forest |
-| `07_residual_analysis.png` | Residual plots + distribution + Q-Q plot |
+| `06_actual_vs_predicted.png` | Actual vs predicted scatter for the best model |
+| `07_residual_analysis.png` | Residuals vs predicted, distribution, and Q-Q plot |
 | `08_feature_importance.png` | Feature importance bar chart |
 | `09_error_by_range.png` | Prediction error by price range |
 
@@ -107,6 +113,7 @@ This project builds and compares multiple regression models to predict median ho
 - **scikit-learn** — Model training, evaluation, hyperparameter tuning
 - **pandas** — Data manipulation
 - **numpy** — Numerical operations
+- **scipy** — Q-Q plot for residual normality check
 - **matplotlib** — Plotting
 - **seaborn** — Statistical visualizations
 
