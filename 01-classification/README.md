@@ -33,32 +33,29 @@ Customer churn is a critical business problem in the telecom industry. This proj
 1. **Exploratory Data Analysis** — Distribution analysis, churn patterns by contract type and charges
 2. **Preprocessing** — Label encoding of 15 categorical columns, handling missing values in TotalCharges, feature scaling with StandardScaler
 3. **Correlation Analysis** — Identified top features correlated with churn
-4. **Model Training** — Compared Logistic Regression, Random Forest, Gradient Boosting
+4. **Model Training** — Compared Logistic Regression, Random Forest, Gradient Boosting, and a class-weighted Gradient Boosting variant to handle the imbalanced target
 5. **Hyperparameter Tuning** — GridSearchCV with 5-fold cross-validation on best model
-6. **Evaluation** — Accuracy, ROC-AUC, confusion matrix, feature importance
+6. **Evaluation** — Accuracy, ROC-AUC, recall, confusion matrix, feature importance
 
 ## Results
 
-| Model | Accuracy | ROC-AUC |
-|-------|----------|---------|
-| Logistic Regression | 79.9% | 0.840 |
-| Random Forest | 79.2% | 0.822 |
-| **Gradient Boosting** | **80.1%** | **0.845** |
+| Model | Accuracy | ROC-AUC | Churn Recall |
+|-------|----------|---------|--------------|
+| Logistic Regression | 74.0% | 0.840 | 79.7% |
+| Random Forest | 79.2% | 0.821 | 49.5% |
+| **Gradient Boosting** | **80.1%** | **0.845** | 50.5% |
+| GB (Weighted) | 74.6% | 0.844 | **79.1%** |
+
+> **Note on model choice:** Gradient Boosting wins on ROC-AUC and accuracy, but only catches ~50% of actual churners. The class-weighted variant (`GB (Weighted)`) reaches a similar ROC-AUC while catching ~80% of churners — usually the more useful tradeoff when missing a churner costs more than a false alarm.
 
 ### After Hyperparameter Tuning (Gradient Boosting)
 | Metric | Score |
 |--------|-------|
-| Test Accuracy | 80.1% |
+| Test Accuracy | 80.3% |
 | Test ROC-AUC | 0.845 |
-| Best CV ROC-AUC | 0.845 |
+| Best CV ROC-AUC | 0.846 |
 
-**Best parameters:** `learning_rate=0.1, max_depth=3, n_estimators=100`
-
-### Classification Report (Gradient Boosting)
-| Class | Precision | Recall | F1-Score | Support |
-|-------|-----------|--------|----------|---------|
-| No Churn (0) | 0.84 | 0.91 | 0.87 | 1,035 |
-| Churn (1) | 0.67 | 0.51 | 0.57 | 374 |
+**Best parameters:** `learning_rate=0.05, max_depth=3, n_estimators=100`
 
 ### Top 5 Most Important Features
 | Feature | Importance |
@@ -77,8 +74,8 @@ The script generates the following plots in the `plots/` folder:
 |------|-------------|
 | `01_eda_overview.png` | Churn distribution, churn by contract type, monthly charges |
 | `02_correlation_matrix.png` | Feature correlation heatmap |
-| `03_roc_curves.png` | ROC curves comparing all three models |
-| `04_confusion_matrix.png` | Confusion matrix for Gradient Boosting |
+| `03_roc_curves.png` | ROC curves comparing all four models |
+| `04_confusion_matrix.png` | Confusion matrix for the best model |
 | `05_feature_importance.png` | Top 10 most predictive features |
 
 ## Tech Stack
