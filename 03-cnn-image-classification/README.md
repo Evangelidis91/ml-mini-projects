@@ -51,6 +51,8 @@ Input (32×32×3) ↓
 | Non-trainable parameters | 1,408 |
 | Model size | 3.12 MB |
 
+The 3 convolutional blocks share the same internal pattern (Conv-BN-Conv-BN-Pool-Dropout) and are built via a small `conv_block(filters)` helper for readability.
+
 ## Training Configuration
 
 | Setting | Value |
@@ -68,48 +70,60 @@ Input (32×32×3) ↓
 ### Overall Performance
 | Metric | Score |
 |--------|-------|
-| **Test Accuracy** | **77.83%** |
-| Epochs trained | 18 (early stopped) |
-| Best epoch | 8 |
+| **Test Accuracy** | **88.07%** |
+| Test Loss | 0.3600 |
+| Epochs trained | 50 (full schedule) |
+| Best epoch | 49 |
+| Train-Val gap | 0.006 (✅ good generalization) |
+
+> The learning rate reduction kicked in 3 times during training (at epochs 18, 37, and 45), each cut helping the model squeeze out more validation accuracy without overfitting.
 
 ### Per-Class Results
 | Class | Precision | Recall | F1-Score | Accuracy |
 |-------|-----------|--------|----------|----------|
-| airplane | 0.74 | 0.85 | 0.79 | 84.6% |
-| automobile | 0.83 | 0.94 | 0.88 | 94.2% |
-| bird | 0.84 | 0.57 | 0.68 | 57.2% |
-| cat | 0.70 | 0.52 | 0.60 | 51.9% |
-| deer | 0.75 | 0.80 | 0.77 | 79.6% |
-| dog | 0.83 | 0.53 | 0.65 | 52.8% |
-| frog | 0.73 | 0.92 | 0.82 | 91.9% |
-| horse | 0.77 | 0.86 | 0.81 | 86.4% |
-| ship | 0.85 | 0.89 | 0.87 | 89.2% |
-| truck | 0.78 | 0.91 | 0.84 | 90.5% |
+| airplane | 0.91 | 0.90 | 0.91 | 89.8% |
+| automobile | 0.91 | 0.97 | 0.94 | 96.7% |
+| bird | 0.87 | 0.84 | 0.86 | 84.0% |
+| cat | 0.83 | 0.69 | 0.75 | 69.1% |
+| deer | 0.87 | 0.88 | 0.88 | 88.4% |
+| dog | 0.87 | 0.76 | 0.81 | 75.5% |
+| frog | 0.81 | 0.97 | 0.88 | 97.3% |
+| horse | 0.91 | 0.93 | 0.92 | 92.8% |
+| ship | 0.94 | 0.93 | 0.93 | 92.8% |
+| truck | 0.89 | 0.94 | 0.91 | 94.3% |
 
-**Best class:** automobile (94.2%)  
-**Worst class:** cat (51.9%)
+**Best class:** frog (97.3%)  
+**Worst class:** cat (69.1%)
+
+> The model excels on classes with distinctive shapes/colours (vehicles, frogs, horses) and struggles with visually similar animal classes (cats, dogs, birds).
 
 ### Most Confused Pairs
 | Actual | Predicted as | Count |
-|--------|-------------|-------|
-| dog | cat | 158 |
-| bird | frog | 103 |
-| bird | airplane | 101 |
-| dog | horse | 98 |
-| cat | frog | 95 |
+|--------|--------------|-------|
+| dog | cat | 96 |
+| cat | frog | 77 |
+| cat | dog | 72 |
+| bird | frog | 52 |
+| deer | frog | 46 |
+| truck | automobile | 41 |
+| cat | bird | 40 |
+
+> Cats ↔ dogs is the classic CIFAR-10 confusion: similar shapes, similar fur, often similar poses. Truck ↔ automobile is the other intuitive pair (both 4-wheeled vehicles).
 
 ### Confidence Analysis
 | Confidence Level | Accuracy | Samples |
-|-----------------|----------|---------|
-| 0–50% | 36.5% | 1,253 |
-| 50–70% | 53.5% | 1,590 |
-| 70–80% | 70.4% | 814 |
-| 80–90% | 77.2% | 1,044 |
-| 90–95% | 89.2% | 845 |
-| 95–100% | 97.5% | 4,451 |
+|------------------|----------|---------|
+| 0–50% | 38.7% | 445 |
+| 50–70% | 56.0% | 887 |
+| 70–80% | 67.8% | 515 |
+| 80–90% | 77.8% | 679 |
+| 90–95% | 86.0% | 600 |
+| 95–100% | 98.1% | 6,637 |
 
-**Correct predictions avg confidence:** 87.6%  
-**Wrong predictions avg confidence:** 59.8%
+**Correct predictions avg confidence:** 94.0%  
+**Wrong predictions avg confidence:** 67.1%
+
+> The model is well-calibrated: when it's confident (>95%), it's right 98% of the time. About 66% of test samples land in this high-confidence bucket.
 
 ## Visualizations
 
@@ -130,8 +144,7 @@ Input (32×32×3) ↓
 ## Tech Stack
 
 - **Python 3.10+**
-- **TensorFlow 2.15** — Model building and training
-- **Keras** — High-level neural network API
+- **TensorFlow / Keras** — Model building and training
 - **scikit-learn** — Classification report, confusion matrix
 - **numpy** — Array operations
 - **matplotlib** — Plotting
