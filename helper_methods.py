@@ -40,3 +40,30 @@ def evaluate(model, X_test, y_test, label=""):
         "mae": mae,
         "r2": r2,
     }
+
+def plot_image_grid(
+    images,
+    titles,
+    filename,
+    suptitle,
+    rows=2,
+    cols=5,
+    figsize=(15, 6),
+    title_color=None,
+    suptitle_color=None,
+):
+    """Plot a grid of images with titles. Saves automatically."""
+    with save_plot(filename):
+        _, axes = plt.subplots(rows, cols, figsize=figsize)
+
+        for ax, img, title in zip(axes.flatten(), images, titles):
+            ax.imshow(img)
+            kwargs = {"fontsize": 10}
+
+            if title_color:
+                kwargs["color"] = title_color
+
+            ax.set_title(title, **kwargs)
+            ax.axis("off")
+
+        plt.suptitle(suptitle, fontsize=14, color=suptitle_color or "black")
