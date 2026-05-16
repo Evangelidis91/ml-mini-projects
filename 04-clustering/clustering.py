@@ -11,27 +11,24 @@ Models: K-Means, DBSCAN
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import silhouette_score, silhouette_samples
 from sklearn.decomposition import PCA
 import warnings
-import os
+
+from helper_methods import section, save_plot
+
+K_CLUSTERS = 5
 
 warnings.filterwarnings("ignore")
-
-# Create output folder for plots
-os.makedirs("plots", exist_ok=True)
 
 # ============================================================
 # 1. GENERATE DATASET
 # ============================================================
 def load_data():
     """Load Mall Customers dataset or generate realistic data."""
-    print("=" * 60)
-    print("LOADING DATA")
-    print("=" * 60)
+    section("LOADING DATA")
 
     # Try to load real dataset first
     try:
@@ -46,9 +43,9 @@ def load_data():
 
     print(f"Dataset shape: {df.shape}")
     print(f"Columns: {list(df.columns)}")
-    print(f"\nFirst 5 rows:")
+    print("\nFirst 5 rows:")
     print(df.head().to_string())
-    print(f"\nBasic statistics:")
+    print("\nBasic statistics:")
     print(df.describe().to_string())
 
     return df
@@ -107,14 +104,12 @@ def generate_dataset():
 # ============================================================
 def explore_data(df):
     """Perform exploratory data analysis."""
-    print("\n" + "=" * 60)
-    print("EXPLORATORY DATA ANALYSIS")
-    print("=" * 60)
+    section("EXPLORATORY DATA ANALYSIS")
 
     # Gender distribution
     if "Gender" in df.columns:
         gender_dist = df["Gender"].value_counts()
-        print(f"\nGender distribution:")
+        print("\nGender distribution:")
         for gender, count in gender_dist.items():
             print(f"  {gender}: {count} ({count/len(df):.1%})")
 
@@ -123,97 +118,73 @@ def explore_data(df):
     print(f"Income: mean={df['Annual Income (k$)'].mean():.1f}k, range={df['Annual Income (k$)'].min()}-{df['Annual Income (k$)'].max()}k")
     print(f"Spending: mean={df['Spending Score (1-100)'].mean():.1f}, range={df['Spending Score (1-100)'].min()}-{df['Spending Score (1-100)'].max()}")
 
-    # Plot distributions
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    # ---- Plot 1: Distributions (3 histograms) ----
+    hist_specs = [
+        ("Age", "steelblue", "Age Distribution"),
+        ("Annual Income (k$)", "coral", "Annual Income Distribution"),
+        ("Spending Score (1-100)", "green", "Spending Score Distribution"),
+    ]
 
-    axes[0].hist(df["Age"], bins=20, color="steelblue", alpha=0.7, edgecolor="white")
-    axes[0].set_title("Age Distribution", fontsize=12)
-    axes[0].set_xlabel("Age")
-    axes[0].set_ylabel("Count")
-    axes[0].axvline(df["Age"].mean(), color="red", linestyle="--", label=f"Mean: {df['Age'].mean():.0f}")
-    axes[0].legend()
+    with save_plot("01_distributions.png"):
+        _, axes = plt.subplots(1, 3, figsize=(18, 5))
+        for ax, (col, color, title) in zip(axes, hist_specs):
+            ax.hist(df[col], bins=20, color=color, alpha=0.7, edgecolor="white")
+            ax.set_title(title, fontsize=12)
+            ax.set_xlabel(col)
+            ax.set_ylabel("Count")
+            mean = df[col].mean()
+            ax.axvline(mean, color="red", linestyle="--", label=f"Mean: {mean:.0f}")
+            ax.legend()
 
-    axes[1].hist(df["Annual Income (k$)"], bins=20, color="coral", alpha=0.7, edgecolor="white")
-    axes[1].set_title("Annual Income Distribution", fontsize=12)
-    axes[1].set_xlabel("Annual Income (k$)")
-    axes[1].set_ylabel("Count")
-    axes[1].axvline(df["Annual Income (k$)"].mean(), color="red", linestyle="--", label=f"Mean: {df['Annual Income (k$)'].mean():.0f}k")
-    axes[1].legend()
+    # ---- Plot 2: Scatter pairs ----
+    scatter_specs = [
+        ("Annual Income (k$)", "Spending Score (1-100)", "steelblue", "Income vs Spending"),
+        ("Age", "Spending Score (1-100)", "coral", "Age vs Spending"),
+        ("Age", "Annual Income (k$)", "green", "Age vs Income"),
+    ]
 
-    axes[2].hist(df["Spending Score (1-100)"], bins=20, color="green", alpha=0.7, edgecolor="white")
-    axes[2].set_title("Spending Score Distribution", fontsize=12)
-    axes[2].set_xlabel("Spending Score (1-100)")
-    axes[2].set_ylabel("Count")
-    axes[2].axvline(df["Spending Score (1-100)"].mean(), color="red", linestyle="--", label=f"Mean: {df['Spending Score (1-100)'].mean():.0f}")
-    axes[2].legend()
+    with save_plot("02_scatter_plots.png"):
+        _, axes = plt.subplots(1, 3, figsize=(18, 5))
+        for ax, (xcol, ycol, color, title) in zip(axes, scatter_specs):
+            ax.scatter(df[xcol], df[ycol], alpha=0.6, s=50, color=color)
+            ax.set_xlabel(xcol)
+            ax.set_ylabel(ycol)
+            ax.set_title(title)
+            ax.grid(True, alpha=0.3)
 
-    plt.tight_layout()
-    plt.savefig("plots/01_distributions.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("\nSaved: plots/01_distributions.png")
-
-    # Pairplot-style scatter
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-
-    axes[0].scatter(df["Annual Income (k$)"], df["Spending Score (1-100)"], alpha=0.6, s=50, color="steelblue")
-    axes[0].set_xlabel("Annual Income (k$)")
-    axes[0].set_ylabel("Spending Score (1-100)")
-    axes[0].set_title("Income vs Spending")
-    axes[0].grid(True, alpha=0.3)
-
-    axes[1].scatter(df["Age"], df["Spending Score (1-100)"], alpha=0.6, s=50, color="coral")
-    axes[1].set_xlabel("Age")
-    axes[1].set_ylabel("Spending Score (1-100)")
-    axes[1].set_title("Age vs Spending")
-    axes[1].grid(True, alpha=0.3)
-
-    axes[2].scatter(df["Age"], df["Annual Income (k$)"], alpha=0.6, s=50, color="green")
-    axes[2].set_xlabel("Age")
-    axes[2].set_ylabel("Annual Income (k$)")
-    axes[2].set_title("Age vs Income")
-    axes[2].grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig("plots/02_scatter_plots.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/02_scatter_plots.png")
-
-    # Gender-based analysis
+    # ---- Plot 3: Gender-based analysis ----
     if "Gender" in df.columns:
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        with save_plot("03_gender_analysis.png"):
+            _, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-        for gender, color in [("Male", "steelblue"), ("Female", "coral")]:
-            subset = df[df["Gender"] == gender]
-            axes[0].scatter(
-                subset["Annual Income (k$)"],
-                subset["Spending Score (1-100)"],
-                alpha=0.6, s=50, color=color, label=gender
+            for gender, color in [("Male", "steelblue"), ("Female", "coral")]:
+                subset = df[df["Gender"] == gender]
+                axes[0].scatter(
+                    subset["Annual Income (k$)"],
+                    subset["Spending Score (1-100)"],
+                    alpha=0.6, s=50, color=color, label=gender,
+                )
+
+            axes[0].set_xlabel("Annual Income (k$)")
+            axes[0].set_ylabel("Spending Score (1-100)")
+            axes[0].set_title("Income vs Spending by Gender")
+            axes[0].legend()
+            axes[0].grid(True, alpha=0.3)
+
+            df.boxplot(
+                column=["Annual Income (k$)", "Spending Score (1-100)"],
+                by="Gender",
+                ax=axes[1],
             )
-
-        axes[0].set_xlabel("Annual Income (k$)")
-        axes[0].set_ylabel("Spending Score (1-100)")
-        axes[0].set_title("Income vs Spending by Gender")
-        axes[0].legend()
-        axes[0].grid(True, alpha=0.3)
-
-        # Box plots by gender
-        df.boxplot(column=["Annual Income (k$)", "Spending Score (1-100)"], by="Gender", ax=axes[1])
-        axes[1].set_title("Income & Spending by Gender")
-        plt.suptitle("")
-
-        plt.tight_layout()
-        plt.savefig("plots/03_gender_analysis.png", dpi=150, bbox_inches="tight")
-        plt.close()
-        print("Saved: plots/03_gender_analysis.png")
+            axes[1].set_title("Income & Spending by Gender")
+            plt.suptitle("")
 
 # ============================================================
 # 3. FEATURE PREPARATION
 # ============================================================
 def prepare_features(df):
     """Select and scale features."""
-    print("\n" + "=" * 60)
-    print("FEATURE PREPARATION")
-    print("=" * 60)
+    section("FEATURE PREPARATION")
 
     # 2D features (Income + Spending) for main analysis
     X_2d = df[["Annual Income (k$)", "Spending Score (1-100)"]].values
@@ -227,26 +198,23 @@ def prepare_features(df):
     scaler_3d = StandardScaler()
     X_3d_scaled = scaler_3d.fit_transform(X_3d)
 
-    print(f"2D Features: Annual Income, Spending Score")
-    print(f"3D Features: Age, Annual Income, Spending Score")
+    print("2D Features: Annual Income, Spending Score")
+    print("3D Features: Age, Annual Income, Spending Score")
     print(f"Samples: {X_2d.shape[0]}")
     print(f"\n2D Scaled — Mean: {X_2d_scaled.mean(axis=0).round(4)}, Std: {X_2d_scaled.std(axis=0).round(4)}")
     print(f"3D Scaled — Mean: {X_3d_scaled.mean(axis=0).round(4)}, Std: {X_3d_scaled.std(axis=0).round(4)}")
 
-    return X_2d, X_2d_scaled, X_3d, X_3d_scaled, scaler_2d, scaler_3d
+    return X_2d, X_2d_scaled, X_3d, X_3d_scaled
 
 # ============================================================
 # 4. OPTIMAL K SELECTION
 # ============================================================
 def find_optimal_k(X_scaled):
     """Find optimal number of clusters."""
-    print("\n" + "=" * 60)
-    print("OPTIMAL K SELECTION")
-    print("=" * 60)
+    section("OPTIMAL K SELECTION")
 
     K_range = range(2, 11)
-    inertias = []
-    silhouette_scores = []
+    inertias, silhouette_scores = [], []
 
     print("\nEvaluating K=2 to K=10:")
     for k in K_range:
@@ -257,46 +225,37 @@ def find_optimal_k(X_scaled):
         silhouette_scores.append(score)
         print(f"  K={k:2d}: Inertia={kmeans.inertia_:8.2f}, Silhouette={score:.4f}")
 
-    # Plot
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-    axes[0].plot(list(K_range), inertias, "bo-", linewidth=2, markersize=8)
-    axes[0].set_xlabel("Number of Clusters (K)")
-    axes[0].set_ylabel("Inertia (Within-cluster sum of squares)")
-    axes[0].set_title("Elbow Method")
-    axes[0].grid(True, alpha=0.3)
-
-    # Mark the elbow (K=5)
-    axes[0].axvline(x=5, color="red", linestyle="--", alpha=0.5, label="K=5")
-    axes[0].legend()
-
-    axes[1].plot(list(K_range), silhouette_scores, "ro-", linewidth=2, markersize=8)
-    axes[1].set_xlabel("Number of Clusters (K)")
-    axes[1].set_ylabel("Silhouette Score")
-    axes[1].set_title("Silhouette Analysis")
-    axes[1].grid(True, alpha=0.3)
-
     best_k = list(K_range)[np.argmax(silhouette_scores)]
-    axes[1].axvline(x=best_k, color="blue", linestyle="--", alpha=0.5, label=f"Best K={best_k}")
-    axes[1].legend()
 
-    plt.tight_layout()
-    plt.savefig("plots/04_optimal_k.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("\nSaved: plots/04_optimal_k.png")
+    with save_plot("04_optimal_k.png"):
+        _, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+        axes[0].plot(list(K_range), inertias, "bo-", linewidth=2, markersize=8)
+        axes[0].set(xlabel="Number of Clusters (K)",
+                    ylabel="Inertia (Within-cluster sum of squares)",
+                    title="Elbow Method")
+        axes[0].axvline(x=K_CLUSTERS, color="red", linestyle="--", alpha=0.5,
+                        label=f"K={K_CLUSTERS}")
+        axes[0].grid(True, alpha=0.3)
+        axes[0].legend()
+
+        axes[1].plot(list(K_range), silhouette_scores, "ro-", linewidth=2, markersize=8)
+        axes[1].set(xlabel="Number of Clusters (K)",
+                    ylabel="Silhouette Score",
+                    title="Silhouette Analysis")
+        axes[1].axvline(x=best_k, color="blue", linestyle="--", alpha=0.5,
+                        label=f"Best K={best_k}")
+        axes[1].grid(True, alpha=0.3)
+        axes[1].legend()
 
     print(f"\nBest K by silhouette score: {best_k} (score={max(silhouette_scores):.4f})")
-
-    return best_k, silhouette_scores
 
 # ============================================================
 # 5. K-MEANS CLUSTERING
 # ============================================================
-def run_kmeans(X_2d, X_2d_scaled, df, k=5):
+def run_kmeans(X_2d, X_2d_scaled, df, k=K_CLUSTERS):
     """Run K-Means clustering."""
-    print("\n" + "=" * 60)
-    print(f"K-MEANS CLUSTERING (K={k})")
-    print("=" * 60)
+    section(f"K-MEANS CLUSTERING (K={k})")
 
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
     clusters = kmeans.fit_predict(X_2d_scaled)
@@ -308,103 +267,77 @@ def run_kmeans(X_2d, X_2d_scaled, df, k=5):
     print(f"Silhouette Score: {score:.4f}")
     print(f"Inertia: {kmeans.inertia_:.2f}")
 
-    # Plot clusters
-    plt.figure(figsize=(10, 8))
+    centers_original = X_2d.mean(axis=0) + kmeans.cluster_centers_ * X_2d.std(axis=0)
 
-    colors = plt.cm.viridis(np.linspace(0, 1, k))
+    with save_plot("05_kmeans_clusters.png"):
+        plt.figure(figsize=(10, 8))
+        colors = plt.cm.viridis(np.linspace(0, 1, k))
 
-    for i in range(k):
-        mask = clusters == i
-        plt.scatter(
-            X_2d[mask, 0], X_2d[mask, 1],
-            c=[colors[i]], s=100, alpha=0.6,
-            edgecolors="white", linewidth=0.5,
-            label=f"Cluster {i} (n={mask.sum()})"
-        )
+        for i in range(k):
+            mask = clusters == i
+            plt.scatter(X_2d[mask, 0], X_2d[mask, 1],
+                        c=[colors[i]], s=100, alpha=0.6,
+                        edgecolors="white", linewidth=0.5,
+                        label=f"Cluster {i} (n={mask.sum()})")
 
-    # Plot centroids (transform back to original scale)
-    centers_scaled = kmeans.cluster_centers_
-    centers_original = X_2d.mean(axis=0) + centers_scaled * X_2d.std(axis=0)
+        plt.scatter(centers_original[:, 0], centers_original[:, 1],
+                    c="red", marker="X", s=300, edgecolors="black",
+                    linewidths=2, label="Centroids", zorder=5)
 
-    plt.scatter(
-        centers_original[:, 0], centers_original[:, 1],
-        c="red", marker="X", s=300, edgecolors="black",
-        linewidths=2, label="Centroids", zorder=5
-    )
+        plt.xlabel("Annual Income (k$)", fontsize=12)
+        plt.ylabel("Spending Score (1-100)", fontsize=12)
+        plt.title(f"K-Means Clustering (K={k}, Silhouette={score:.3f})", fontsize=14)
+        plt.legend(loc="upper right")
+        plt.grid(True, alpha=0.3)
 
-    plt.xlabel("Annual Income (k$)", fontsize=12)
-    plt.ylabel("Spending Score (1-100)", fontsize=12)
-    plt.title(f"K-Means Clustering (K={k}, Silhouette={score:.3f})", fontsize=14)
-    plt.legend(loc="upper right")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig("plots/05_kmeans_clusters.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/05_kmeans_clusters.png")
-
-    return df_result, clusters, kmeans, score
+    return df_result, clusters, score
 
 # ============================================================
 # 6. SILHOUETTE ANALYSIS (DETAILED)
 # ============================================================
 def plot_silhouette_detail(X_2d_scaled, clusters, k):
     """Plot detailed silhouette diagram."""
-    print("\n" + "=" * 60)
-    print("SILHOUETTE ANALYSIS (DETAILED)")
-    print("=" * 60)
+    section("SILHOUETTE ANALYSIS (DETAILED)")
 
     sample_silhouette_values = silhouette_samples(X_2d_scaled, clusters)
     avg_score = silhouette_score(X_2d_scaled, clusters)
 
-    plt.figure(figsize=(10, 7))
+    with save_plot("06_silhouette_detail.png"):
+        plt.figure(figsize=(10, 7))
+        y_lower = 10
+        colors = plt.cm.viridis(np.linspace(0, 1, k))
 
-    y_lower = 10
-    colors = plt.cm.viridis(np.linspace(0, 1, k))
+        for i in range(k):
+            cluster_values = sample_silhouette_values[clusters == i]
+            cluster_values.sort()
+            size = cluster_values.shape[0]
+            y_upper = y_lower + size
 
-    for i in range(k):
-        cluster_values = sample_silhouette_values[clusters == i]
-        cluster_values.sort()
+            plt.fill_betweenx(np.arange(y_lower, y_upper), 0, cluster_values,
+                              facecolor=colors[i], edgecolor=colors[i], alpha=0.7)
+            plt.text(-0.05, y_lower + 0.5 * size, f"Cluster {i}", fontsize=10)
+            y_lower = y_upper + 10
 
-        size = cluster_values.shape[0]
-        y_upper = y_lower + size
-
-        plt.fill_betweenx(
-            np.arange(y_lower, y_upper),
-            0, cluster_values,
-            facecolor=colors[i], edgecolor=colors[i], alpha=0.7
-        )
-
-        # Label cluster
-        plt.text(-0.05, y_lower + 0.5 * size, f"Cluster {i}", fontsize=10)
-        y_lower = y_upper + 10
-
-    plt.axvline(x=avg_score, color="red", linestyle="--", linewidth=2,
-                label=f"Average ({avg_score:.3f})")
-    plt.xlabel("Silhouette Coefficient", fontsize=12)
-    plt.ylabel("Cluster", fontsize=12)
-    plt.title("Silhouette Diagram for K-Means Clustering", fontsize=14)
-    plt.legend(fontsize=11)
-    plt.tight_layout()
-    plt.savefig("plots/06_silhouette_detail.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/06_silhouette_detail.png")
+        plt.axvline(x=avg_score, color="red", linestyle="--", linewidth=2,
+                    label=f"Average ({avg_score:.3f})")
+        plt.xlabel("Silhouette Coefficient", fontsize=12)
+        plt.ylabel("Cluster", fontsize=12)
+        plt.title("Silhouette Diagram for K-Means Clustering", fontsize=14)
+        plt.legend(fontsize=11)
 
     # Print per-cluster stats
-    print(f"\nPer-cluster silhouette scores:")
+    print("\nPer-cluster silhouette scores:")
     for i in range(k):
         cluster_values = sample_silhouette_values[clusters == i]
         print(f"  Cluster {i}: mean={cluster_values.mean():.4f}, "
-              f"min={cluster_values.min():.4f}, "
-              f"size={len(cluster_values)}")
+              f"min={cluster_values.min():.4f}, size={len(cluster_values)}")
 
 # ============================================================
 # 7. CLUSTER ANALYSIS
 # ============================================================
-def analyze_clusters(df_result, k=5):
+def analyze_clusters(df_result, k=K_CLUSTERS):
     """Analyze and label each cluster."""
-    print("\n" + "=" * 60)
-    print("CLUSTER ANALYSIS")
-    print("=" * 60)
+    section("CLUSTER ANALYSIS")
 
     segment_labels = {}
 
@@ -445,11 +378,9 @@ def analyze_clusters(df_result, k=5):
 # ============================================================
 # 8. CLUSTER PROFILES VISUALIZATION
 # ============================================================
-def plot_cluster_profiles(df_result, segment_labels, k=5):
+def plot_cluster_profiles(df_result, segment_labels, k=K_CLUSTERS):
     """Visualize cluster profiles."""
-    print("\n" + "=" * 60)
-    print("CLUSTER PROFILES")
-    print("=" * 60)
+    section("CLUSTER PROFILES")
 
     cluster_summary = (
         df_result.groupby("Cluster")
@@ -461,53 +392,31 @@ def plot_cluster_profiles(df_result, segment_labels, k=5):
         .round(1)
     )
 
-    # Bar charts
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-
     labels = [f"C{i}\n{segment_labels[i].split('(')[0].strip()}" for i in range(k)]
+    metric_specs = [
+        ("Age", "Average Age by Cluster", "Age", "steelblue"),
+        ("Annual Income (k$)", "Average Income by Cluster", "Income (k$)", "coral"),
+        ("Spending Score (1-100)", "Average Spending Score by Cluster", "Spending Score", "green"),
+    ]
 
-    axes[0].bar(labels, cluster_summary["Age"], color="steelblue", alpha=0.8)
-    axes[0].set_title("Average Age by Cluster", fontsize=12)
-    axes[0].set_ylabel("Age")
-    axes[0].grid(True, alpha=0.3, axis="y")
-
-    axes[1].bar(labels, cluster_summary["Annual Income (k$)"], color="coral", alpha=0.8)
-    axes[1].set_title("Average Income by Cluster", fontsize=12)
-    axes[1].set_ylabel("Income (k$)")
-    axes[1].grid(True, alpha=0.3, axis="y")
-
-    axes[2].bar(labels, cluster_summary["Spending Score (1-100)"], color="green", alpha=0.8)
-    axes[2].set_title("Average Spending Score by Cluster", fontsize=12)
-    axes[2].set_ylabel("Spending Score")
-    axes[2].grid(True, alpha=0.3, axis="y")
-
-    plt.tight_layout()
-    plt.savefig("plots/07_cluster_profiles_bar.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/07_cluster_profiles_bar.png")
+    # Bar charts
+    with save_plot("07_cluster_profiles_bar.png"):
+        _, axes = plt.subplots(1, 3, figsize=(18, 5))
+        for ax, (col, title, ylabel, color) in zip(axes, metric_specs):
+            ax.bar(labels, cluster_summary[col], color=color, alpha=0.8)
+            ax.set_title(title, fontsize=12)
+            ax.set_ylabel(ylabel)
+            ax.grid(True, alpha=0.3, axis="y")
 
     # Box plots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    with save_plot("08_cluster_boxplots.png"):
+        _, axes = plt.subplots(1, 3, figsize=(18, 5))
+        for ax, (col, _, _, _) in zip(axes, metric_specs):
+            df_result.boxplot(column=col, by="Cluster", ax=ax)
+            ax.set_title(f"{col} by Cluster")
+            ax.set_xlabel("Cluster")
+        plt.suptitle("")
 
-    df_result.boxplot(column="Age", by="Cluster", ax=axes[0])
-    axes[0].set_title("Age by Cluster")
-    axes[0].set_xlabel("Cluster")
-
-    df_result.boxplot(column="Annual Income (k$)", by="Cluster", ax=axes[1])
-    axes[1].set_title("Income by Cluster")
-    axes[1].set_xlabel("Cluster")
-
-    df_result.boxplot(column="Spending Score (1-100)", by="Cluster", ax=axes[2])
-    axes[2].set_title("Spending Score by Cluster")
-    axes[2].set_xlabel("Cluster")
-
-    plt.suptitle("")
-    plt.tight_layout()
-    plt.savefig("plots/08_cluster_boxplots.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/08_cluster_boxplots.png")
-
-    # Radar/Spider chart
     print("\nCluster summary table:")
     print(cluster_summary.to_string())
 
@@ -516,9 +425,7 @@ def plot_cluster_profiles(df_result, segment_labels, k=5):
 # ============================================================
 def run_dbscan(X_2d, X_2d_scaled, clusters_kmeans):
     """Run DBSCAN and compare with K-Means."""
-    print("\n" + "=" * 60)
-    print("DBSCAN CLUSTERING")
-    print("=" * 60)
+    section("DBSCAN CLUSTERING")
 
     # Test different eps values
     print("\nTesting different eps values (min_samples=5):")
@@ -538,8 +445,7 @@ def run_dbscan(X_2d, X_2d_scaled, clusters_kmeans):
                 score = silhouette_score(X_2d_scaled[mask], labels[mask])
                 score_str = f", Silhouette={score:.4f}"
                 if score > best_score:
-                    best_score = score
-                    best_eps = eps
+                    best_score, best_eps = score, eps
 
         print(f"  eps={eps:.1f}: {n_clusters} clusters, {n_noise} noise points{score_str}")
 
@@ -554,58 +460,42 @@ def run_dbscan(X_2d, X_2d_scaled, clusters_kmeans):
     print(f"  Clusters found: {n_clusters}")
     print(f"  Noise points: {n_noise}")
 
-    # Comparison plot
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    with save_plot("09_kmeans_vs_dbscan.png"):
+        _, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-    # K-Means
-    axes[0].scatter(
-        X_2d[:, 0], X_2d[:, 1],
-        c=clusters_kmeans, cmap="viridis", alpha=0.6, s=80, edgecolors="white", linewidth=0.5
-    )
-    axes[0].set_title("K-Means Clustering (K=5)", fontsize=12)
-    axes[0].set_xlabel("Annual Income (k$)")
-    axes[0].set_ylabel("Spending Score")
-    axes[0].grid(True, alpha=0.3)
+        # K-Means
+        axes[0].scatter(X_2d[:, 0], X_2d[:, 1],
+                        c=clusters_kmeans, cmap="viridis", alpha=0.6, s=80,
+                        edgecolors="white", linewidth=0.5)
+        axes[0].set(title=f"K-Means Clustering (K={K_CLUSTERS})",
+                    xlabel="Annual Income (k$)", ylabel="Spending Score")
+        axes[0].grid(True, alpha=0.3)
 
-    # DBSCAN
-    # Plot clustered points
-    mask = dbscan_clusters != -1
-    if mask.any():
-        axes[1].scatter(
-            X_2d[mask, 0], X_2d[mask, 1],
-            c=dbscan_clusters[mask], cmap="viridis", alpha=0.6, s=80,
-            edgecolors="white", linewidth=0.5, label="Clustered"
-        )
-    # Plot noise points
-    noise_mask = dbscan_clusters == -1
-    if noise_mask.any():
-        axes[1].scatter(
-            X_2d[noise_mask, 0], X_2d[noise_mask, 1],
-            c="grey", marker="x", s=60, alpha=0.8,
-            label=f"Noise ({n_noise})"
-        )
+        # DBSCAN
+        mask = dbscan_clusters != -1
+        if mask.any():
+            axes[1].scatter(X_2d[mask, 0], X_2d[mask, 1],
+                            c=dbscan_clusters[mask], cmap="viridis", alpha=0.6, s=80,
+                            edgecolors="white", linewidth=0.5, label="Clustered")
+        noise_mask = dbscan_clusters == -1
+        if noise_mask.any():
+            axes[1].scatter(X_2d[noise_mask, 0], X_2d[noise_mask, 1],
+                            c="grey", marker="x", s=60, alpha=0.8,
+                            label=f"Noise ({n_noise})")
 
-    axes[1].set_title(f"DBSCAN (eps={best_eps}, {n_clusters} clusters)", fontsize=12)
-    axes[1].set_xlabel("Annual Income (k$)")
-    axes[1].set_ylabel("Spending Score")
-    axes[1].legend()
-    axes[1].grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig("plots/09_kmeans_vs_dbscan.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/09_kmeans_vs_dbscan.png")
+        axes[1].set(title=f"DBSCAN (eps={best_eps}, {n_clusters} clusters)",
+                    xlabel="Annual Income (k$)", ylabel="Spending Score")
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
 
     return dbscan_clusters, best_eps
 
 # ============================================================
 # 10. 3D CLUSTERING WITH PCA
 # ============================================================
-def run_3d_clustering(X_3d, X_3d_scaled, k=5):
+def run_3d_clustering(X_3d, X_3d_scaled, k=K_CLUSTERS):
     """Run K-Means on 3D features and visualize with PCA."""
-    print("\n" + "=" * 60)
-    print("3D CLUSTERING (Age + Income + Spending)")
-    print("=" * 60)
+    section("3D CLUSTERING (Age + Income + Spending)")
 
     # K-Means on 3D
     kmeans_3d = KMeans(n_clusters=k, random_state=42, n_init=10)
@@ -623,95 +513,76 @@ def run_3d_clustering(X_3d, X_3d_scaled, k=5):
     print(f"Total explained: {sum(explained_variance):.2%}")
 
     # Plot
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    with save_plot("10_3d_clustering.png"):
+        _, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-    # PCA plot
-    scatter = axes[0].scatter(
-        X_pca[:, 0], X_pca[:, 1],
-        c=clusters_3d, cmap="viridis", alpha=0.6, s=100,
-        edgecolors="white", linewidth=0.5
-    )
-    axes[0].set_xlabel(f"PC1 ({explained_variance[0]:.1%} variance)")
-    axes[0].set_ylabel(f"PC2 ({explained_variance[1]:.1%} variance)")
-    axes[0].set_title(f"3D K-Means Clusters (PCA projection)\nSilhouette={score_3d:.3f}")
-    axes[0].grid(True, alpha=0.3)
-    plt.colorbar(scatter, ax=axes[0], label="Cluster")
+        s1 = axes[0].scatter(X_pca[:, 0], X_pca[:, 1],
+                             c=clusters_3d, cmap="viridis", alpha=0.6, s=100,
+                             edgecolors="white", linewidth=0.5)
+        axes[0].set(xlabel=f"PC1 ({explained_variance[0]:.1%} variance)",
+                    ylabel=f"PC2 ({explained_variance[1]:.1%} variance)",
+                    title=f"3D K-Means Clusters (PCA projection)\nSilhouette={score_3d:.3f}")
+        axes[0].grid(True, alpha=0.3)
+        plt.colorbar(s1, ax=axes[0], label="Cluster")
 
-    # 3D original features (Income vs Spending, colored by 3D clusters)
-    scatter2 = axes[1].scatter(
-        X_3d[:, 1], X_3d[:, 2],
-        c=clusters_3d, cmap="viridis", alpha=0.6, s=100,
-        edgecolors="white", linewidth=0.5
-    )
-    axes[1].set_xlabel("Annual Income (k$)")
-    axes[1].set_ylabel("Spending Score")
-    axes[1].set_title("3D Clusters (Income vs Spending view)")
-    axes[1].grid(True, alpha=0.3)
-    plt.colorbar(scatter2, ax=axes[1], label="Cluster")
+        s2 = axes[1].scatter(X_3d[:, 1], X_3d[:, 2],
+                             c=clusters_3d, cmap="viridis", alpha=0.6, s=100,
+                             edgecolors="white", linewidth=0.5)
+        axes[1].set(xlabel="Annual Income (k$)", ylabel="Spending Score",
+                    title="3D Clusters (Income vs Spending view)")
+        axes[1].grid(True, alpha=0.3)
+        plt.colorbar(s2, ax=axes[1], label="Cluster")
 
-    plt.tight_layout()
-    plt.savefig("plots/10_3d_clustering.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/10_3d_clustering.png")
-
-    return clusters_3d, score_3d
+    return score_3d
 
 # ============================================================
 # 11. CLUSTER STABILITY ANALYSIS
 # ============================================================
-def analyze_stability(X_2d_scaled, k=5):
+def analyze_stability(X_2d_scaled, k=K_CLUSTERS):
     """Analyze cluster stability with different random seeds."""
-    print("\n" + "=" * 60)
-    print("CLUSTER STABILITY ANALYSIS")
-    print("=" * 60)
+    section("CLUSTER STABILITY ANALYSIS")
 
     scores = []
-    inertias = []
-
     for seed in range(20):
         kmeans = KMeans(n_clusters=k, random_state=seed, n_init=10)
         labels = kmeans.fit_predict(X_2d_scaled)
-        score = silhouette_score(X_2d_scaled, labels)
-        scores.append(score)
-        inertias.append(kmeans.inertia_)
+        scores.append(silhouette_score(X_2d_scaled, labels))
 
-    print(f"Silhouette scores across 20 runs:")
-    print(f"  Mean:  {np.mean(scores):.4f}")
-    print(f"  Std:   {np.std(scores):.4f}")
-    print(f"  Min:   {np.min(scores):.4f}")
-    print(f"  Max:   {np.max(scores):.4f}")
-    print(f"  Range: {np.max(scores) - np.min(scores):.4f}")
+    mean = np.mean(scores)
+    std = np.std(scores)
+    score_min, score_max = np.min(scores), np.max(scores)
 
-    if np.std(scores) < 0.01:
+    print("Silhouette scores across 20 runs:")
+    print(f"  Mean:  {mean:.4f}")
+    print(f"  Std:   {std:.4f}")
+    print(f"  Min:   {score_min:.4f}")
+    print(f"  Max:   {score_max:.4f}")
+    print(f"  Range: {score_max - score_min:.4f}")
+
+    if std < 0.01:
         print("  ✅ Clusters are very stable (low variance)")
-    elif np.std(scores) < 0.05:
+    elif std < 0.05:
         print("  ⚠️  Some instability in clustering")
     else:
         print("  ❌ Clusters are unstable")
 
     # Plot stability
-    plt.figure(figsize=(10, 5))
-    plt.bar(range(20), scores, color="steelblue", alpha=0.7)
-    plt.axhline(y=np.mean(scores), color="red", linestyle="--",
-                label=f"Mean: {np.mean(scores):.4f}")
-    plt.xlabel("Random Seed")
-    plt.ylabel("Silhouette Score")
-    plt.title(f"Cluster Stability (K={k}, 20 runs)")
-    plt.legend()
-    plt.grid(True, alpha=0.3, axis="y")
-    plt.tight_layout()
-    plt.savefig("plots/11_stability.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("Saved: plots/11_stability.png")
+    with save_plot("11_stability.png"):
+        plt.figure(figsize=(10, 5))
+        plt.bar(range(20), scores, color="steelblue", alpha=0.7)
+        plt.axhline(y=mean, color="red", linestyle="--", label=f"Mean: {mean:.4f}")
+        plt.xlabel("Random Seed")
+        plt.ylabel("Silhouette Score")
+        plt.title(f"Cluster Stability (K={k}, 20 runs)")
+        plt.legend()
+        plt.grid(True, alpha=0.3, axis="y")
 
 # ============================================================
 # 12. BUSINESS RECOMMENDATIONS
 # ============================================================
 def print_recommendations(segment_labels):
     """Print business recommendations for each segment."""
-    print("\n" + "=" * 60)
-    print("BUSINESS RECOMMENDATIONS")
-    print("=" * 60)
+    section("BUSINESS RECOMMENDATIONS")
 
     recommendations = {
         "Premium (High Income, High Spend)": {
@@ -765,7 +636,7 @@ def print_recommendations(segment_labels):
         rec = recommendations.get(label, {"strategy": "Custom", "actions": ["Analyze further"]})
         print(f"\n  Cluster {cluster_id}: {label}")
         print(f"  Strategy: {rec['strategy']}")
-        print(f"  Actions:")
+        print("  Actions:")
         for action in rec["actions"]:
             print(f"    • {action}")
 
@@ -774,9 +645,7 @@ def print_recommendations(segment_labels):
 # ============================================================
 def print_summary(k, kmeans_score, segment_labels, score_3d):
     """Print final summary."""
-    print("\n" + "=" * 60)
-    print("FINAL SUMMARY")
-    print("=" * 60)
+    section("FINAL SUMMARY")
 
     print(f"""
 Dataset: Mall Customers (200 samples)
@@ -801,7 +670,6 @@ biggest revenue opportunity. These customers have purchasing
 power but aren't spending — targeted marketing campaigns with 
 personalized offers could unlock significant growth.
 """)
-    print("=" * 60)
 
 # ============================================================
 # MAIN
@@ -816,38 +684,37 @@ def main():
     explore_data(df)
 
     # 3. Prepare features
-    X_2d, X_2d_scaled, X_3d, X_3d_scaled, scaler_2d, scaler_3d = prepare_features(df)
+    X_2d, X_2d_scaled, X_3d, X_3d_scaled = prepare_features(df)
 
     # 4. Find optimal K
-    best_k, silhouette_scores = find_optimal_k(X_2d_scaled)
+    find_optimal_k(X_2d_scaled)
 
     # 5. K-Means clustering
-    k = 5  # Use 5 for clear business interpretation
-    df_result, clusters, kmeans, score = run_kmeans(X_2d, X_2d_scaled, df, k=k)
+    df_result, clusters, score = run_kmeans(X_2d, X_2d_scaled, df, k=K_CLUSTERS)
 
     # 6. Silhouette detail
-    plot_silhouette_detail(X_2d_scaled, clusters, k)
+    plot_silhouette_detail(X_2d_scaled, clusters, K_CLUSTERS)
 
     # 7. Analyze clusters
-    segment_labels = analyze_clusters(df_result, k=k)
+    segment_labels = analyze_clusters(df_result, k=K_CLUSTERS)
 
     # 8. Cluster profiles
-    plot_cluster_profiles(df_result, segment_labels, k=k)
+    plot_cluster_profiles(df_result, segment_labels, k=K_CLUSTERS)
 
     # 9. DBSCAN comparison
     run_dbscan(X_2d, X_2d_scaled, clusters)
 
     # 10. 3D clustering
-    clusters_3d, score_3d = run_3d_clustering(X_3d, X_3d_scaled, k=k)
+    score_3d = run_3d_clustering(X_3d, X_3d_scaled, k=K_CLUSTERS)
 
     # 11. Stability analysis
-    analyze_stability(X_2d_scaled, k=k)
+    analyze_stability(X_2d_scaled, k=K_CLUSTERS)
 
     # 12. Business recommendations
     print_recommendations(segment_labels)
 
     # 13. Summary
-    print_summary(k, score, segment_labels, score_3d)
+    print_summary(K_CLUSTERS, score, segment_labels, score_3d)
 
     print("\nAll plots saved in /plots folder")
     print("Done! ✅")

@@ -15,6 +15,8 @@ This project performs customer segmentation on mall customers to identify distin
 - **Gender split:** Male 52%, Female 48%
 - **Source:** [Kaggle Mall Customer Segmentation](https://www.kaggle.com/datasets/vjchoudhary7/customer-segmentation-tutorial)
 
+> If `Mall_Customers.csv` is not found in the working directory, the script automatically generates a realistic dataset with 5 natural clusters so the pipeline still runs end-to-end.
+
 ### Statistics
 | Feature | Mean | Min | Max | Std |
 |---------|------|-----|-----|-----|
@@ -39,7 +41,7 @@ This project performs customer segmentation on mall customers to identify distin
 
 ### Optimal K Selection
 | K | Inertia | Silhouette Score |
-|---|---------|-----------------|
+|---|---------|------------------|
 | 2 | 243.83 | 0.3654 |
 | 3 | 149.49 | 0.4443 |
 | 4 | 84.16 | 0.5130 |
@@ -60,6 +62,8 @@ This project performs customer segmentation on mall customers to identify distin
 
 **Overall Silhouette Score: 0.5877**
 
+> All 5 clusters have silhouette scores above 0.53, indicating well-defined and meaningfully separated segments.
+
 ### DBSCAN Comparison
 | eps | Clusters | Noise Points | Silhouette |
 |-----|----------|--------------|------------|
@@ -68,7 +72,7 @@ This project performs customer segmentation on mall customers to identify distin
 | 0.5 | 2 | 1 | 0.346 |
 | 0.6+ | 1 | 0 | — |
 
-K-Means outperforms DBSCAN for this dataset — clusters are spherical and well-separated.
+> K-Means outperforms DBSCAN for this dataset — the clusters are spherical and well-separated, which is exactly what K-Means is designed for. DBSCAN's best result (eps=0.3) finds 4 clusters but treats 20 customers (10%) as noise.
 
 ### 3D Clustering (Age + Income + Spending)
 | Metric | Score |
@@ -78,7 +82,7 @@ K-Means outperforms DBSCAN for this dataset — clusters are spherical and well-
 | PCA PC2 variance | 34.27% |
 | Total explained | 85.34% |
 
-Adding Age reduces cluster separation (0.59 → 0.40), suggesting Age is less discriminative than Income and Spending for segmentation.
+> Adding Age reduces cluster separation (0.59 → 0.40). Income and Spending are the dominant signals; Age adds noise without improving structure. The 2D model is the better choice here.
 
 ### Cluster Stability
 | Metric | Value |
@@ -88,7 +92,7 @@ Adding Age reduces cluster separation (0.59 → 0.40), suggesting Age is less di
 | Range | 0.0000 |
 | Status | ✅ Perfectly stable |
 
-Zero variance across 20 random seeds — clusters are completely reproducible.
+> Zero variance across 20 random seeds — clusters are completely reproducible. Combined with `n_init=10`, K-Means converges to the same global optimum every time.
 
 ## Customer Segments & Business Recommendations
 
@@ -145,7 +149,6 @@ Zero variance across 20 random seeds — clusters are completely reproducible.
 - **pandas** — Data manipulation
 - **numpy** — Numerical operations
 - **matplotlib** — Plotting
-- **seaborn** — Statistical visualizations
 
 ## Project Structure
 04-clustering/ 
